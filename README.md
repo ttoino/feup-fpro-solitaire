@@ -12,7 +12,7 @@ Criar uma versão do clássico solitário Klondike (e talvez outras variações)
 
 ### Descrição
 
-É um jogo de cartas para uma jogador em que o objetivo é mover todas as cartas do mesmo naipe para a mesma pilha. Estes movimentos têm certas regras, como as cartas terem que estar empilhadas por ordem e com as cores a alternar.
+É um jogo de cartas para um jogador em que o objetivo é mover todas as cartas do mesmo naipe para a mesma pilha. Estes movimentos têm certas regras, como as cartas terem que estar empilhadas por ordem e com as cores a alternar.
 
 ### UI (Microsoft Solitaire Collection como exemplo)
 
@@ -24,9 +24,9 @@ Criar uma versão do clássico solitário Klondike (e talvez outras variações)
 
 ### Tarefas
 
-1. Cartas
-2. Pilhas de cartas
-3. Interação com o rato
-4. Verificar vitória
+- [ ] Cartas
+- [ ] Pilhas de cartas
+- [ ] Interação com o rato
+- [ ] Verificar vitória
 
-- Atualizado a última vez em 13/12/2020
+Atualizado a última vez em 13/12/2020

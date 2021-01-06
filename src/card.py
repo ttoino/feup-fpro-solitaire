@@ -8,6 +8,14 @@ class Suit(Enum):
     HEARTS = "hearts"
     DIAMONDS = "diamonds"
 
+    @property
+    def is_red(self):
+        return self in {Suit.HEARTS, Suit.DIAMONDS}
+
+    @property
+    def is_black(self):
+        return not self.is_red()
+
 
 class Symbol(Enum):
     ACE = "a"
@@ -24,13 +32,23 @@ class Symbol(Enum):
     QUEEN = "q"
     KING = "k"
 
+    @property
+    def _list(self):
+        return [s for s in Symbol]
+
+    def is_next(self, other):
+        l = self._list
+        return l.index(self) == l.index(other)+1
+
 
 class Card():
-    def __init__(self, suit: Suit, symbol: Symbol):
+    def __init__(self, app, suit: Suit, symbol: Symbol):
         super().__init__()
+        self.app = app
         self.suit = suit
         self.symbol = symbol
         self.flipped = True
+        self.pos = (0, 0)
 
     @property
     def asset(self):
@@ -40,9 +58,9 @@ class Card():
     def back_asset(self):
         return assets.back_surface
 
-    def draw(self, screen, pos):
+    def draw(self, screen):
         surface = self.back_asset if self.flipped else self.asset
-        screen.blit(surface, pos)
+        screen.blit(surface, self.app.game_to_screen(self.pos))
 
     def flip(self):
         self.flipped = not self.flipped

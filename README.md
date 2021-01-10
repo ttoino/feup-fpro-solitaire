@@ -20,7 +20,8 @@ Criar uma versão do clássico solitário Klondike (e talvez outras variações)
 
 ### Pacotes
 
-- Pygame
+- [Pygame](https://www.pygame.org)
+- [pynanosvg](https://github.com/ethanhs/pynanosvg)
 
 ### Tarefas
 

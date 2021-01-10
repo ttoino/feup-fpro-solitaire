@@ -15,12 +15,12 @@ class App():
             pygame.MOUSEBUTTONDOWN: self.on_mousedown,
             pygame.MOUSEBUTTONUP: self.on_mouseup,
             pygame.MOUSEMOTION: self.on_mousemove,
-            # pygame.KEYDOWN: self.on_key
+            pygame.KEYDOWN: self.on_key
         }
 
-        # self.KEYMAPPING = {
-        #     pygame.K_RETURN: self.start_game
-        # }
+        self.KEYMAPPING = {
+            pygame.K_SPACE: self.test
+        }
 
         self.mousedown = False
         self.mousedrag = False
@@ -128,6 +128,9 @@ class App():
 
     def start_game(self):
         self.game = Game(self)
+
+    def test(self):
+        self.game.stock.draw_card()
 
 
 if __name__ == "__main__":

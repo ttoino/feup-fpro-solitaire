@@ -3,6 +3,7 @@ from collections import deque
 
 from card import Card, Symbol
 import assets
+import constants
 
 
 class Stack(ABC):
@@ -16,24 +17,28 @@ class Stack(ABC):
     # Properties
     @property
     def card_on_top(self):
-        if len(self.cards) == 0:
+        if self.is_empty:
             return None
         return self.cards[-1]
 
     @property
     def card_on_bottom(self):
-        if len(self.cards) == 0:
+        if self.is_empty:
             return None
         return self.cards[0]
 
     @property
     def is_empty(self):
-        return len(self.cards) == 0
+        return self.size == 0
+
+    @property
+    def size(self):
+        return len(self.cards)
 
     # Manipulation methods
     def add(self, card):
         self.cards.append(card)
-        card.pos = self.get_card_pos(self.cards.index(card))
+        card.pos = list(self.get_card_pos())[self.cards.index(card)]
 
     def add_all(self, cards):
         self.cards.extend(cards)
@@ -87,7 +92,7 @@ class TableauStack(Stack):
         x, y = self.pos
         for card in self.cards:
             yield (x, y)
-            y += 10 if card.flipped else 20
+            y += constants.MARGIN if card.flipped else constants.BIG_MARGIN
 
     def can_enter(self, card: Card):
         if self.is_empty:
@@ -108,7 +113,7 @@ class FoundationStack(Stack):
         super().__init__(app, pos)
 
     def get_card_pos(self):
-        return [self.pos]*len(self.cards)
+        return [self.pos]*self.size
 
     def can_enter(self, card: Card):
         if self.is_empty:
@@ -119,14 +124,31 @@ class FoundationStack(Stack):
 
 # Deck
 class StockStack(FoundationStack):
-    def __init__(self, app, pos):
+    def __init__(self, app, pos, draws_to: Stack):
         super().__init__(app, pos)
+        self.draws_to = draws_to
 
     def get_card_pos(self):
-        return [self.pos]*len(self.cards)
+        return [self.pos]*self.size
 
     def can_enter(self, card: Card):
-        return True
+        return False
+
+    def draw_card(self):
+        if self.is_empty:
+            self.add_all(reversed(self.draws_to.cards))
+            self.draws_to.empty()
+            self.update()
+        else:
+            self.move_card(self.draws_to)
+            self.draws_to.update()
+
+    def update(self):
+        super().update()
+
+        for card in self.cards:
+            if not card.flipped:
+                card.flip()
 
 
 # Fanned sideways
@@ -136,19 +158,33 @@ class WasteStack(Stack):
         self.draw_empty = False
 
     def get_card_pos(self):
-        return [self.pos]*len(self.cards)
+        yield from [self.pos]*max(self.size-2, 1)
+        if self.size >= 2:
+            yield self.pos[0] + constants.CARD_WIDTH_MARGIN*.5, self.pos[1]
+        if self.size >= 3:
+            yield self.pos[0] + constants.CARD_WIDTH_MARGIN, self.pos[1]
 
     def can_enter(self, card):
-        return True
+        return False
+
+    def update(self):
+        super().update()
+
+        for card in self.cards:
+            if card.flipped:
+                card.flip()
 
 
+# Follows the mouse
 class DragStack(TableauStack):
     def __init__(self, app, pos):
         super().__init__(app, pos)
         self.offset = (0, 0)
         # self.draw_empty = False
+        self.source_stack = None
 
     def _set_mouse_pos(self, mp):
         self.pos = (mp[0] - self.offset[0], mp[1] - self.offset[1])
+        super(Stack).update()
 
     mouse_pos = property(fset=_set_mouse_pos)

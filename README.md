@@ -25,9 +25,10 @@ Criar uma versão do clássico solitário Klondike (e talvez outras variações)
 
 ### Tarefas
 
-- [ ] Cartas
-- [ ] Pilhas de cartas
-- [ ] Interação com o rato
+- [x] Cartas
+- [x] Pilhas de cartas
+- [x] Interação com o rato
 - [ ] Verificar vitória
+- [ ] Interface gráfica
 
 Atualizado a última vez em 13/12/2020

@@ -12,18 +12,18 @@ class App():
         self.EVENTS = {
             pygame.QUIT: self.on_quit,
             pygame.VIDEORESIZE: self.on_resize,
-            pygame.MOUSEBUTTONDOWN: self.on_mousedown,
-            pygame.MOUSEBUTTONUP: self.on_mouseup,
-            pygame.MOUSEMOTION: self.on_mousemove,
+            pygame.MOUSEBUTTONDOWN: self.mouse_event("down"),
+            pygame.MOUSEBUTTONUP: self.mouse_event("up"),
+            pygame.MOUSEMOTION: self.mouse_event("move"),
             pygame.KEYDOWN: self.on_key
         }
+
+        self.mousedown = {b: False for b in ("l", "r", "m")}
+        self.mousedrag = {b: False for b in ("l", "r", "m")}
 
         self.KEYMAPPING = {
             pygame.K_SPACE: self.test
         }
-
-        self.mousedown = False
-        self.mousedrag = False
 
         pygame.display.set_caption("Solitaire")
         pygame.display.set_icon(assets.get_icon())
@@ -36,6 +36,24 @@ class App():
 
         self.running = True
 
+    def mouse_event(self, name):
+        def inner(event):
+            btns = []
+            button, buttons = getattr(event, "button", -1), getattr(event, "buttons", [])
+            if button == pygame.BUTTON_LEFT or pygame.BUTTON_LEFT in buttons:
+                btns.append("l")
+            if button == pygame.BUTTON_RIGHT or pygame.BUTTON_RIGHT in buttons:
+                btns.append("r")
+            if button == pygame.BUTTON_MIDDLE or pygame.BUTTON_MIDDLE in buttons:
+                btns.append("m")
+
+            pos = self.screen_to_game(event.pos)
+            for b in btns:
+                getattr(self, f"on_mouse{name}", lambda e, b: None)(event, b)
+                getattr(self, f"on_mouse{name}_{b}", lambda e: None)(event)
+                getattr(self.game, f"on_mouse{name}_{b}", lambda p: None)(pos)
+        return inner
+
     def loop(self):
         while self.running:
             self.clock.tick(500)
@@ -47,8 +65,8 @@ class App():
         for event in pygame.event.get():
             try:
                 self.EVENTS[event.type](event)
-            except Exception as e:
-                pass
+            except KeyError as e:
+                print(f"Event {pygame.event.event_name(event.type)} not handled", event.__dict__)
 
     def on_quit(self, event):
         self.running = False
@@ -64,47 +82,28 @@ class App():
 
         assets.render_svgs(self.scale)
 
-    def on_mousedown(self, event):
-        # print("MOUSE DOWN")
-        self.mousedown = True
+    def on_mousedown(self, event, b):
+        self.mousedown[b] = True
 
-    def on_mousemove(self, event):
-        # print("MOUSE MOVE")
-        if not self.mousedrag and self.mousedown:
-            self.mousedrag = True
-            self.on_mousedragbegin(event)
+    def on_mousemove(self, event, b):
+        if not self.mousedrag[b] and self.mousedown[b]:
+            self.mousedrag[b] = True
+            self.mouse_event("dragbegin")(event)
 
-        self.mousedrag = self.mousedown
+        self.mousedrag[b] = self.mousedown[b]
 
-        if self.mousedrag:
-            self.on_mousedrag(event)
+        if self.mousedrag[b]:
+            self.mouse_event("drag")(event)
 
-    def on_mouseup(self, event):
-        # print("MOUSE UP")
-        self.mousedown = False
-        if self.mousedrag:
-            self.on_mousedragend(event)
+    def on_mouseup(self, event, b):
+        self.mousedown[b] = False
+        if self.mousedrag[b]:
+            self.mouse_event("dragend")(event)
         else:
-            self.on_mouseclick(event)
+            self.mouse_event("click")(event)
 
-    def on_mouseclick(self, event):
-        # print("CLICK")
-        pass
-
-    def on_mousedragbegin(self, event):
-        # print("BEGIN DRAG")
-        pass
-
-    def on_mousedragend(self, event):
-        # print("END DRAG")
-        self.mousedrag = False
-        pass
-
-    def on_mousedrag(self, event):
-        self.game.drag.mouse_pos = self.screen_to_game(event.pos)
-
-        # print("MOUSE DRAG")
-        pass
+    def on_mousedragend(self, event, b):
+        self.mousedrag[b] = False
 
     def on_key(self, event):
         self.KEYMAPPING[event.key]()
@@ -130,7 +129,7 @@ class App():
         self.game = Game(self)
 
     def test(self):
-        self.game.stock.draw_card()
+        pass
 
 
 if __name__ == "__main__":

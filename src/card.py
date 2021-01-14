@@ -14,7 +14,7 @@ class Suit(Enum):
 
     @property
     def is_black(self):
-        return not self.is_red()
+        return not self.is_red
 
 
 class Symbol(Enum):
@@ -39,6 +39,10 @@ class Symbol(Enum):
     def is_next(self, other):
         l = self._list
         return l.index(self) == l.index(other)+1
+
+    def is_previous(self, other):
+        l = self._list
+        return l.index(self)+1 == l.index(other)
 
 
 class Card():

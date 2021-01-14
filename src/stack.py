@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from collections import deque
 
+import pygame
+
 from card import Card, Symbol
 import assets
 import constants
@@ -13,6 +15,7 @@ class Stack(ABC):
         self.pos = pos
         self.cards: deque[Card] = deque()
         self.draw_empty = True
+        self.rect = pygame.Rect(self.pos, (constants.CARD_WIDTH, constants.CARD_HEIGHT))
 
     # Properties
     @property
@@ -66,6 +69,12 @@ class Stack(ABC):
         for i, card in enumerate(self.cards):
             card.pos = pos[i]
 
+        if len(pos) > 0:
+            last = pos.pop()
+            self.rect.update((self.pos, (last[0] - self.pos[0] + constants.CARD_WIDTH, last[1] - self.pos[1] + constants.CARD_HEIGHT)))
+        else:
+            self.rect.update((self.pos, (constants.CARD_WIDTH, constants.CARD_HEIGHT)))
+
     # Drawing
     def draw(self, screen):
         if self.draw_empty:
@@ -79,8 +88,13 @@ class Stack(ABC):
         pass
 
     @abstractmethod
-    def can_enter(self, card):
+    def can_enter(self, card, amount):
         return True
+
+    def get_cards_to_drag(self, pos):
+        if self.rect.collidepoint(pos):
+            return 1
+        return 0
 
 
 # Fanned down
@@ -94,17 +108,30 @@ class TableauStack(Stack):
             yield (x, y)
             y += constants.MARGIN if card.flipped else constants.BIG_MARGIN
 
-    def can_enter(self, card: Card):
+    def can_enter(self, card: Card, amount):
         if self.is_empty:
             return card.symbol == Symbol.KING
 
-        return self.card_on_top.suit.is_black == card.suit.is_red and card.symbol.is_next(self.card_on_top.symbol)
+        return self.card_on_top.suit.is_black == card.suit.is_red and card.symbol.is_previous(self.card_on_top.symbol)
 
     def update(self):
         super().update()
 
-        if self.card_on_top.flipped:
-            self.card_on_top.flip()
+        if self.card_on_top:
+            if self.card_on_top.flipped:
+                self.card_on_top.flip()
+
+    def get_cards_to_drag(self, pos):
+        if not self.rect.collidepoint(pos) or self.is_empty:
+            return 0
+
+        p = self.get_card_pos()
+        next(p)
+        for i, j in enumerate(p):
+            if pos[1] < j[1]:
+                return 0 if self.cards[i].flipped else self.size-i
+
+        return 1
 
 
 # Squared
@@ -115,7 +142,10 @@ class FoundationStack(Stack):
     def get_card_pos(self):
         return [self.pos]*self.size
 
-    def can_enter(self, card: Card):
+    def can_enter(self, card: Card, amount):
+        if amount != 1:
+            return False
+
         if self.is_empty:
             return card.symbol == Symbol.ACE
 
@@ -131,7 +161,7 @@ class StockStack(FoundationStack):
     def get_card_pos(self):
         return [self.pos]*self.size
 
-    def can_enter(self, card: Card):
+    def can_enter(self, card: Card, amount):
         return False
 
     def draw_card(self):
@@ -150,6 +180,9 @@ class StockStack(FoundationStack):
             if not card.flipped:
                 card.flip()
 
+    def get_cards_to_drag(self, pos):
+        return 0
+
 
 # Fanned sideways
 class WasteStack(Stack):
@@ -164,7 +197,7 @@ class WasteStack(Stack):
         if self.size >= 3:
             yield self.pos[0] + constants.CARD_WIDTH_MARGIN, self.pos[1]
 
-    def can_enter(self, card):
+    def can_enter(self, card, amount):
         return False
 
     def update(self):
@@ -174,17 +207,25 @@ class WasteStack(Stack):
             if card.flipped:
                 card.flip()
 
+    def get_cards_to_drag(self, pos):
+        if pygame.Rect(list(self.get_card_pos()).pop(), (constants.CARD_WIDTH, constants.CARD_HEIGHT)).collidepoint(pos):
+            return 1
+        return 0
+
 
 # Follows the mouse
 class DragStack(TableauStack):
     def __init__(self, app, pos):
         super().__init__(app, pos)
         self.offset = (0, 0)
-        # self.draw_empty = False
+        self.draw_empty = False
         self.source_stack = None
 
     def _set_mouse_pos(self, mp):
         self.pos = (mp[0] - self.offset[0], mp[1] - self.offset[1])
-        super(Stack).update()
+        self.update()
 
     mouse_pos = property(fset=_set_mouse_pos)
+
+    def get_cards_to_drag(self, pos):
+        return 0

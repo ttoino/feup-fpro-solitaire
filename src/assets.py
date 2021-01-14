@@ -1,3 +1,6 @@
+import os
+import sys
+
 import pygame
 from svg import Parser, Rasterizer
 import card
@@ -12,15 +15,14 @@ empty_surface = None
 
 
 def get_icon():
-    return render_svg(load_svg("assets/icon.svg"), 1, False)
+    return render_svg(load_svg("icon.svg"), 1, False)
 
 
 def load_svgs():
     global card_svgs, back_svg, empty_svg
-    card_svgs = {(suit, symbol): load_svg(f"assets/{suit.value}_{symbol.value}.svg")
-                 for suit in card.Suit for symbol in card.Symbol}
-    back_svg = load_svg("assets/back.svg")
-    empty_svg = load_svg("assets/empty.svg")
+    card_svgs = {(suit, symbol): load_svg(f"{suit.value}_{symbol.value}.svg") for suit in card.Suit for symbol in card.Symbol}
+    back_svg = load_svg("back.svg")
+    empty_svg = load_svg("empty.svg")
 
 
 def render_svgs(scale):
@@ -31,8 +33,13 @@ def render_svgs(scale):
     empty_surface = render_svg(empty_svg, scale)
 
 
+def normalize_path(file):
+    dir = getattr(sys, "_MEIPASS", "")
+    return os.path.join(dir, "assets", file)
+
+
 def load_svg(file):
-    return Parser.parse_file(file)
+    return Parser.parse_file(normalize_path(file))
 
 
 rasterizer = Rasterizer()

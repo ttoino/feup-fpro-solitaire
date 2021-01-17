@@ -1,4 +1,5 @@
 import pygame
+from pygame.constants import KMOD_CTRL, K_c, K_d, K_z
 import constants
 from game import Game
 import assets
@@ -22,7 +23,10 @@ class App():
         self.mousedrag = {b: False for b in ("l", "r", "m")}
 
         self.KEYMAPPING = {
-            pygame.K_SPACE: self.test
+            pygame.K_n: lambda e: self.new_game() if e.mod & pygame.KMOD_CTRL else None,
+            pygame.K_d: lambda e: self.game.deal_card(),
+            pygame.K_z: lambda e: self.game.undo() if e.mod & pygame.KMOD_CTRL else None,
+            pygame.K_y: lambda e: self.game.redo() if e.mod & pygame.KMOD_CTRL else None,
         }
 
         pygame.display.set_caption("Solitaire")
@@ -32,8 +36,7 @@ class App():
         assets.load_svgs()
         self.on_resize(pygame.event.Event(pygame.VIDEORESIZE, size=(constants.WIDTH, constants.HEIGHT)))
 
-        self.start_game()
-
+        self.new_game()
         self.running = True
 
     def mouse_event(self, name):
@@ -54,9 +57,12 @@ class App():
                 getattr(self.game, f"on_mouse{name}_{b}", lambda p: None)(pos)
         return inner
 
+    def on_key(self, event):
+        self.KEYMAPPING.get(event.key, lambda e: None)(event)
+
     def loop(self):
         while self.running:
-            self.clock.tick(500)
+            self.clock.tick(200)
             print(f"FPS: {self.clock.get_fps():3.0f}", end="\r")
             self.events()
             self.draw()
@@ -82,6 +88,7 @@ class App():
 
         assets.render_svgs(self.scale)
 
+    # MOUSE EVENTS
     def on_mousedown(self, event, b):
         self.mousedown[b] = True
 
@@ -105,9 +112,6 @@ class App():
     def on_mousedragend(self, event, b):
         self.mousedrag[b] = False
 
-    def on_key(self, event):
-        self.KEYMAPPING[event.key]()
-
     def screen_to_game(self, coords):
         return ((coords[0] - self.origin[0])/self.scale, (coords[1] - self.origin[1])/self.scale)
 
@@ -125,11 +129,8 @@ class App():
     def draw_background(self):
         self.screen.fill((16, 124, 16))
 
-    def start_game(self):
+    def new_game(self):
         self.game = Game(self)
-
-    def test(self):
-        pass
 
 
 if __name__ == "__main__":

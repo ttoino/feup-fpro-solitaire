@@ -114,13 +114,6 @@ class TableauStack(Stack):
 
         return self.card_on_top.suit.is_black == card.suit.is_red and card.symbol.is_previous(self.card_on_top.symbol)
 
-    def update(self):
-        super().update()
-
-        if self.card_on_top:
-            if self.card_on_top.flipped:
-                self.card_on_top.flip()
-
     def get_cards_to_drag(self, pos):
         if not self.rect.collidepoint(pos) or self.is_empty:
             return 0

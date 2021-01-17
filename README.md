@@ -31,4 +31,4 @@ Criar uma versão do clássico solitário Klondike (e talvez outras variações)
 - [ ] Verificar vitória
 - [ ] Interface gráfica
 
-Atualizado a última vez em 13/12/2020
+Atualizado a última vez em 17/01/2021

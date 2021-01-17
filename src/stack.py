@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from collections import deque
 
 import pygame
+from animation import ConcurrentAnimations, MoveAnimation
 
 from card import Card, Symbol
 import assets
@@ -15,9 +16,7 @@ class Stack(ABC):
         self.pos = pos
         self.cards: deque[Card] = deque()
         self.draw_empty = True
-        self.rect = pygame.Rect(self.pos, (constants.CARD_WIDTH, constants.CARD_HEIGHT))
 
-    # Properties
     @property
     def card_on_top(self):
         if self.is_empty:
@@ -38,51 +37,28 @@ class Stack(ABC):
     def size(self):
         return len(self.cards)
 
-    # Manipulation methods
-    def add(self, card):
-        self.cards.append(card)
-        card.pos = list(self.get_card_pos())[self.cards.index(card)]
+    @property
+    def rect(self):
+        return pygame.Rect(self.pos, (constants.CARD_WIDTH, constants.CARD_HEIGHT))
 
-    def add_all(self, cards):
-        self.cards.extend(cards)
+    def reset_pos(self):
+        for card, pos in zip(self.cards, self.get_card_pos()):
+            card.pos = pos
 
-        pos = list(self.get_card_pos())
-        for card in cards:
-            card.pos = pos[self.cards.index(card)]
+    def animate(self):
+        anims = []
+        poss = self.get_card_pos()
+        for card, pos in zip(self.cards, poss):
+            if card.pos != pos:
+                anims.append(MoveAnimation(card, pos))
+        return ConcurrentAnimations(anims)
 
-    def empty(self):
-        self.cards.clear()
-
-    def move_card(self, other):
-        other.add(self.cards.pop())
-
-    def move_cards(self, other, amount):
-        cards_to_move = reversed([self.cards.pop() for _ in range(amount)])
-        other.add_all(cards_to_move)
-
-    def move_all(self, other):
-        other.add_all(self.cards)
-        self.empty()
-
-    def update(self):
-        pos = list(self.get_card_pos())
-        for i, card in enumerate(self.cards):
-            card.pos = pos[i]
-
-        if len(pos) > 0:
-            last = pos.pop()
-            self.rect.update((self.pos, (last[0] - self.pos[0] + constants.CARD_WIDTH, last[1] - self.pos[1] + constants.CARD_HEIGHT)))
-        else:
-            self.rect.update((self.pos, (constants.CARD_WIDTH, constants.CARD_HEIGHT)))
-
-    # Drawing
     def draw(self, screen):
         if self.draw_empty:
             screen.blit(assets.empty_surface, self.app.game_to_screen(self.pos))
         for card in self.cards:
             card.draw(screen)
 
-    # Other
     @abstractmethod
     def get_card_pos(self):
         pass
@@ -101,6 +77,14 @@ class Stack(ABC):
 class TableauStack(Stack):
     def __init__(self, app, pos):
         super().__init__(app, pos)
+
+    @property
+    def rect(self):
+        if self.is_empty:
+            return super().rect
+
+        pos = list(self.get_card_pos())[-1]
+        return pygame.Rect(self.pos, (constants.CARD_WIDTH, pos[1] - self.pos[1] + constants.CARD_HEIGHT))
 
     def get_card_pos(self):
         x, y = self.pos
@@ -147,31 +131,14 @@ class FoundationStack(Stack):
 
 # Deck
 class StockStack(FoundationStack):
-    def __init__(self, app, pos, draws_to: Stack):
+    def __init__(self, app, pos):
         super().__init__(app, pos)
-        self.draws_to = draws_to
 
     def get_card_pos(self):
         return [self.pos]*self.size
 
     def can_enter(self, card: Card, amount):
         return False
-
-    def draw_card(self):
-        if self.is_empty:
-            self.add_all(reversed(self.draws_to.cards))
-            self.draws_to.empty()
-            self.update()
-        else:
-            self.move_card(self.draws_to)
-            self.draws_to.update()
-
-    def update(self):
-        super().update()
-
-        for card in self.cards:
-            if not card.flipped:
-                card.flip()
 
     def get_cards_to_drag(self, pos):
         return 0
@@ -183,6 +150,15 @@ class WasteStack(Stack):
         super().__init__(app, pos)
         self.draw_empty = False
 
+    @property
+    def rect(self):
+        if self.size >= 3:
+            return pygame.Rect(self.pos[0] + constants.CARD_WIDTH_MARGIN, self.pos[1], self.pos[0] + constants.CARD_WIDTH, constants.CARD_HEIGHT)
+        if self.size >= 2:
+            return pygame.Rect(self.pos[0] + constants.CARD_WIDTH_MARGIN*.5, self.pos[1], constants.CARD_WIDTH, constants.CARD_HEIGHT)
+
+        return super().rect
+
     def get_card_pos(self):
         yield from [self.pos]*max(self.size-2, 1)
         if self.size >= 2:
@@ -192,13 +168,6 @@ class WasteStack(Stack):
 
     def can_enter(self, card, amount):
         return False
-
-    def update(self):
-        super().update()
-
-        for card in self.cards:
-            if card.flipped:
-                card.flip()
 
     def get_cards_to_drag(self, pos):
         if pygame.Rect(list(self.get_card_pos()).pop(), (constants.CARD_WIDTH, constants.CARD_HEIGHT)).collidepoint(pos):
@@ -216,7 +185,7 @@ class DragStack(TableauStack):
 
     def _set_mouse_pos(self, mp):
         self.pos = (mp[0] - self.offset[0], mp[1] - self.offset[1])
-        self.update()
+        self.reset_pos()
 
     mouse_pos = property(fset=_set_mouse_pos)
 

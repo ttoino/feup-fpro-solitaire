@@ -9,9 +9,9 @@ card_svgs = None
 back_svg = None
 empty_svg = None
 
-card_surfaces = None
-back_surface = None
-empty_surface = None
+card_surfaces: list[pygame.Surface] = None
+back_surface: pygame.Surface = None
+empty_surface: pygame.Surface = None
 
 
 def get_icon():

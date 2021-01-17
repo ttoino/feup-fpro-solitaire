@@ -1,5 +1,6 @@
 from collections import deque
 from random import shuffle
+from animation import Animation, ConcurrentAnimations, FlipAnimation, MoveAnimation, SequentialAnimations
 
 import constants
 from card import Card, Suit, Symbol
@@ -13,6 +14,7 @@ class Game():
         super().__init__()
         self.app = app
         self.history = History(self)
+        self.animations: set[Animation] = set()
         self.deck = self.create_deck()
         shuffle(self.deck)
         self.setup_stacks()
@@ -25,7 +27,7 @@ class Game():
     def setup_stacks(self):
         self.foundations = tuple(FoundationStack(self.app, (i*constants.CARD_WIDTH_MARGIN + constants.BIG_MARGIN, constants.BIG_MARGIN)) for i in range(4))
         self.waste = WasteStack(self.app, (4*constants.CARD_WIDTH_MARGIN + constants.BIG_MARGIN, constants.BIG_MARGIN))
-        self.stock = StockStack(self.app, (6*constants.CARD_WIDTH_MARGIN + constants.BIG_MARGIN, constants.BIG_MARGIN), self.waste)
+        self.stock = StockStack(self.app, (6*constants.CARD_WIDTH_MARGIN + constants.BIG_MARGIN, constants.BIG_MARGIN))
         self.tableaus = tuple(TableauStack(self.app, (i*constants.CARD_WIDTH_MARGIN + constants.BIG_MARGIN, constants.CARD_HEIGHT_MARGIN + constants.BIG_MARGIN)) for i in range(7))
         self.drag = DragStack(self.app, (0, 0))
         self.clickable_stacks: tuple[Stack] = self.foundations + self.tableaus + (self.stock, self.waste)
@@ -33,11 +35,17 @@ class Game():
 
     def deal(self):
         self.stock.cards = self.deck
-        self.stock.update()
+        self.stock.reset_pos()
+        anims = []
         for i, stack in enumerate(self.tableaus):
-            stack.add_all([self.deck.pop() for _ in range(i+1)])
+            stack.cards.extend([self.deck.pop() for _ in range(i+1)])
             stack.card_on_top.flip()
-            stack.update()
+            for c, p in zip(stack.cards, stack.get_card_pos()):
+                a = MoveAnimation(c, p)
+                if c == stack.card_on_top:
+                    a = ConcurrentAnimations((a, FlipAnimation(c)))
+                anims.append(a)
+        self.animations.add(SequentialAnimations(anims))
 
     def undo(self):
         self.history.undo()
@@ -62,6 +70,11 @@ class Game():
     # endregion
 
     def draw(self, screen):
+        for animation in set(self.animations):
+            animation.tick(self.app.clock.get_time())
+            if animation.done:
+                self.animations.remove(animation)
+
         for stack in self.stacks:
             stack.draw(screen)
 
@@ -102,5 +115,5 @@ class Game():
                 self.history.add_move(move)
                 break
 
-        self.drag.empty()
-        self.drag.source_stack.update()
+        self.drag.cards.clear()
+        self.animations.add(self.drag.source_stack.animate())

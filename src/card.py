@@ -1,3 +1,4 @@
+import pygame
 import assets
 from enum import Enum
 
@@ -53,18 +54,23 @@ class Card():
         self.symbol = symbol
         self.flipped = True
         self.pos = (0, 0)
+        self.surface: pygame.Surface = self.back_asset
 
     @property
-    def asset(self):
+    def asset(self) -> pygame.Surface:
         return assets.card_surfaces[(self.suit, self.symbol)]
 
     @property
-    def back_asset(self):
+    def back_asset(self) -> pygame.Surface:
         return assets.back_surface
 
     def draw(self, screen):
-        surface = self.back_asset if self.flipped else self.asset
-        screen.blit(surface, self.app.game_to_screen(self.pos))
+        if self.surface.get_height() != self.back_asset.get_height():
+            self.surface = self.back_asset if self.flipped else self.asset
+
+        pos = self.app.game_to_screen(self.pos)
+        pos = pos[0] + (self.back_asset.get_width() - self.surface.get_width())*.5, pos[1]
+        screen.blit(self.surface, pos)
 
     def flip(self):
         self.flipped = not self.flipped

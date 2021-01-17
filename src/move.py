@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from animation import Animation, ConcurrentAnimations, FlipAnimation
 
 from stack import Stack
 
@@ -8,11 +9,11 @@ class Move(ABC):
         super().__init__()
 
     @abstractmethod
-    def undo(self):
+    def undo(self) -> Animation:
         pass
 
     @abstractmethod
-    def redo(self):
+    def redo(self) -> Animation:
         pass
 
 
@@ -28,17 +29,15 @@ class MoveMove(Move):
         cards = [self.to_stack.cards.pop() for _ in range(self.amount)]
         if not self.reverse:
             cards = reversed(cards)
-        self.from_stack.add_all(cards)
-        self.from_stack.update()
-        self.to_stack.update()
+        self.from_stack.cards.extend(cards)
+        return ConcurrentAnimations((self.from_stack.animate(), self.to_stack.animate()))
 
     def redo(self):
         cards = [self.from_stack.cards.pop() for _ in range(self.amount)]
         if not self.reverse:
             cards = reversed(cards)
-        self.to_stack.add_all(cards)
-        self.from_stack.update()
-        self.to_stack.update()
+        self.to_stack.cards.extend(cards)
+        return ConcurrentAnimations((self.from_stack.animate(), self.to_stack.animate()))
 
 
 class FlipMove(Move):
@@ -48,9 +47,11 @@ class FlipMove(Move):
 
     def undo(self):
         self.card.flip()
+        return FlipAnimation(self.card)
 
     def redo(self):
         self.card.flip()
+        return FlipAnimation(self.card)
 
 
 class ConcurrentMoves(Move):
@@ -59,24 +60,19 @@ class ConcurrentMoves(Move):
         self.moves = moves
 
     def undo(self):
-        for move in self.moves:
-            move.undo()
+        return ConcurrentAnimations([move.undo() for move in self.moves])
 
     def redo(self):
-        for move in self.moves:
-            move.redo()
+        return ConcurrentAnimations([move.redo() for move in self.moves])
 
 
-# TODO
 class SequentialMoves(Move):
     def __init__(self, moves):
         super().__init__()
         self.moves = moves
 
     def undo(self):
-        for move in self.moves:
-            move.undo()
+        return SequentialMoves([move.undo() for move in self.moves])
 
     def redo(self):
-        for move in self.moves:
-            move.redo()
+        return SequentialMoves([move.redo() for move in self.moves])

@@ -15,7 +15,7 @@ class History():
             return
 
         move = self.past.pop()
-        move.undo()
+        self.game.animations.add(move.undo())
         self.future.append(move)
 
     def redo(self):
@@ -23,10 +23,10 @@ class History():
             return
 
         move = self.future.pop()
-        move.redo()
+        self.game.animations.add(move.redo())
         self.past.append(move)
 
     def add_move(self, move):
         self.past.append(move)
         self.future.clear()
-        move.redo()
+        self.game.animations.add(move.redo())

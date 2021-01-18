@@ -25,6 +25,7 @@ class App():
         self.KEYMAPPING = {
             pygame.K_n: lambda e: self.new_game() if e.mod & pygame.KMOD_CTRL else None,
             pygame.K_d: lambda e: self.game.deal_card(),
+            pygame.K_c: lambda e: self.game.collect_all(),
             pygame.K_z: lambda e: self.game.undo() if e.mod & pygame.KMOD_CTRL else None,
             pygame.K_y: lambda e: self.game.redo() if e.mod & pygame.KMOD_CTRL else None,
         }

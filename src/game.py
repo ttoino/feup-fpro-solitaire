@@ -5,7 +5,7 @@ from animation import Animation, ConcurrentAnimations, FlipAnimation, MoveAnimat
 import constants
 from card import Card, Suit, Symbol
 from history import History
-from move import ConcurrentMoves, FlipMove, MoveMove, SequentialMoves
+from move import ConcurrentMoves, FlipMove, Move, MoveMove, SequentialMoves
 from stack import DragStack, FoundationStack, Stack, StockStack, TableauStack, WasteStack
 
 
@@ -31,21 +31,22 @@ class Game():
         self.tableaus = tuple(TableauStack(self.app, (i*constants.CARD_WIDTH_MARGIN + constants.BIG_MARGIN, constants.CARD_HEIGHT_MARGIN + constants.BIG_MARGIN)) for i in range(7))
         self.drag = DragStack(self.app, (0, 0))
         self.clickable_stacks: tuple[Stack] = self.foundations + self.tableaus + (self.stock, self.waste)
-        self.stacks: tuple[Stack] = self.clickable_stacks + (self.drag,)
+        self.stacks: tuple[Stack] = (self.stock, self.waste) + tuple(reversed(self.tableaus)) + tuple(reversed(self.foundations)) + (self.drag,)
 
     def deal(self):
         self.stock.cards = self.deck
         self.stock.reset_pos()
-        anims = []
+        moves = []
+        k = 1
         for i, stack in enumerate(self.tableaus):
-            stack.cards.extend([self.deck.pop() for _ in range(i+1)])
-            stack.card_on_top.flip()
-            for c, p in zip(stack.cards, stack.get_card_pos()):
-                a = MoveAnimation(c, p)
-                if c == stack.card_on_top:
-                    a = ConcurrentAnimations((a, FlipAnimation(c)))
-                anims.append(a)
-        self.animations.add(SequentialAnimations(anims))
+            for j in range(i+1):
+                m = MoveMove(self.stock, stack, 1)
+                if i == j:
+                    m = ConcurrentMoves((m, FlipMove(self.stock.cards[-k])))
+                moves.append(m)
+                k += 1
+
+        self.animations.add(SequentialMoves(moves).redo())
 
     def undo(self):
         self.history.undo()
@@ -59,14 +60,35 @@ class Game():
         else:
             self.history.add_move(ConcurrentMoves((FlipMove(self.stock.card_on_top), MoveMove(self.stock, self.waste, 1))))
 
+    def _collect_card_move(self, stack: Stack, foundation: FoundationStack) -> Move:
+        move = MoveMove(stack, foundation, 1)
+        if len(stack.cards) > 1 and stack.cards[-2].flipped:
+            move = ConcurrentMoves((FlipMove(stack.cards[-2]), move))
+        return move
+
     def collect_card(self, stack: Stack):
         for f in self.foundations:
             if f.can_enter(stack.card_on_top, 1):
-                move = MoveMove(stack, f, 1)
-                if len(stack.cards) > 1 and stack.cards[-2].flipped:
-                    move = ConcurrentMoves((FlipMove(stack.cards[-2]), move))
-                self.history.add_move(move)
+                self.history.add_move(self._collect_card_move(stack, f))
                 return
+
+    def collect_all(self):
+        moves = []
+        b = True
+        while b:
+            b = False
+            for stack in self.tableaus + (self.waste,):
+                for f in self.foundations:
+                    if not stack.is_empty and f.can_enter(stack.card_on_top, 1):
+                        move = self._collect_card_move(stack, f)
+                        moves.append(move)
+                        move.redo()
+                        b = True
+                        continue
+        if moves:
+            m = SequentialMoves(moves)
+            list(m.undo().animations)
+            self.history.add_move(m)
     # endregion
 
     def draw(self, screen):
@@ -91,6 +113,8 @@ class Game():
         s = self.clicked_stack(pos)
         if s and s.get_cards_to_drag(pos) == 1:
             self.collect_card(s)
+        else:
+            self.collect_all()
 
     def on_mousedrag_l(self, pos):
         self.drag.mouse_pos = pos

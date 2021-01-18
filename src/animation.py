@@ -67,12 +67,12 @@ class SequentialAnimations(Animation):
     def __init__(self, animations):
         super().__init__()
         self.animations = animations
-        self.current = 0
+        self.current = next(self.animations)
 
     def tick(self, time):
-        a = self.animations[self.current]
-        a.tick(time)
-        if a.done:
-            self.current += 1
-        if self.current == len(self.animations):
-            self.done = True
+        self.current.tick(time)
+        if self.current.done:
+            try:
+                self.current = next(self.animations)
+            except StopIteration:
+                self.done = True

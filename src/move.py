@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from animation import Animation, ConcurrentAnimations, FlipAnimation
+from typing import Generator
+from animation import Animation, ConcurrentAnimations, FlipAnimation, SequentialAnimations
 
 from stack import Stack
 
@@ -72,7 +73,7 @@ class SequentialMoves(Move):
         self.moves = moves
 
     def undo(self):
-        return SequentialMoves([move.undo() for move in self.moves])
+        return SequentialAnimations(move.undo() for move in reversed(self.moves))
 
     def redo(self):
-        return SequentialMoves([move.redo() for move in self.moves])
+        return SequentialAnimations(move.redo() for move in self.moves)

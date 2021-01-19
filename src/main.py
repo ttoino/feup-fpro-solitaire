@@ -1,5 +1,5 @@
 import pygame
-from pygame.constants import KMOD_CTRL, K_c, K_d, K_z
+from pygame.constants import KMOD_CTRL, K_ESCAPE, K_c, K_d, K_z
 import constants
 from game import Game
 import assets
@@ -28,6 +28,7 @@ class App():
             pygame.K_c: lambda e: self.game.collect_all(),
             pygame.K_z: lambda e: self.game.undo() if e.mod & pygame.KMOD_CTRL else None,
             pygame.K_y: lambda e: self.game.redo() if e.mod & pygame.KMOD_CTRL else None,
+            pygame.K_ESCAPE: lambda e: self.game.cancel_animations()
         }
 
         pygame.display.set_caption("Solitaire")

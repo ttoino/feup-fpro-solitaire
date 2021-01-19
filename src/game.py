@@ -49,12 +49,15 @@ class Game():
         self.animations.add(SequentialMoves(moves).redo())
 
     def undo(self):
+        self.cancel_animations()
         self.history.undo()
 
     def redo(self):
+        self.cancel_animations()
         self.history.redo()
 
     def deal_card(self):
+        self.cancel_animations()
         if self.stock.is_empty:
             self.history.add_move(ConcurrentMoves(tuple(FlipMove(c) for c in self.waste.cards) + (MoveMove(self.waste, self.stock, self.waste.size, True),)))
         else:
@@ -69,6 +72,7 @@ class Game():
     def collect_card(self, stack: Stack):
         for f in self.foundations:
             if f.can_enter(stack.card_on_top, 1):
+                self.cancel_animations()
                 self.history.add_move(self._collect_card_move(stack, f))
                 return
 
@@ -86,9 +90,14 @@ class Game():
                         b = True
                         continue
         if moves:
+            self.cancel_animations()
             m = SequentialMoves(moves)
             list(m.undo().animations)
             self.history.add_move(m)
+
+    def cancel_animations(self):
+        for animation in self.animations:
+            animation.cancel()
     # endregion
 
     def draw(self, screen):
@@ -123,6 +132,7 @@ class Game():
         for s in self.stacks:
             c = s.get_cards_to_drag(pos)
             if c:
+                self.cancel_animations()
                 self.drag.cards += list(s.cards)[s.size-c:]
                 self.drag.source_stack = s
                 self.drag.offset = (pos[0] - self.drag.cards[0].pos[0], pos[1] - self.drag.cards[0].pos[1])

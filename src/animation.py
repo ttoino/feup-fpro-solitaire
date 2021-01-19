@@ -24,6 +24,11 @@ class Animation(ABC):
             self.time = constants.ANIMATION_LENGTH
             self.done = True
 
+    @abstractmethod
+    def cancel(self):
+        self.done = True
+        self.time = constants.ANIMATION_LENGTH
+
     def map(self, start, offset):
         return start + offset*self.progress
 
@@ -39,6 +44,10 @@ class MoveAnimation(Animation):
         super().tick(time)
         self.card.pos = self.map(self.start_pos[0], self.offset[0]), self.map(self.start_pos[1], self.offset[1])
 
+    def cancel(self):
+        super().cancel()
+        self.card.pos = self.start_pos[0] + self.offset[0], self.start_pos[1] + self.offset[1]
+
 
 class FlipAnimation(Animation):
     def __init__(self, card: Card):
@@ -51,6 +60,10 @@ class FlipAnimation(Animation):
         surface = self.card.asset if (self.progress > .5) != (self.end) else self.card.back_asset
         self.card.surface = pygame.transform.smoothscale(surface, (round(surface.get_width()*abs(self.map(-1, 2))), surface.get_height()))
 
+    def cancel(self):
+        super().cancel()
+        self.card.surface = self.card.back_asset if self.end else self.card.asset
+
 
 class ConcurrentAnimations(Animation):
     def __init__(self, animations):
@@ -61,6 +74,12 @@ class ConcurrentAnimations(Animation):
         for animation in self.animations:
             animation.tick(time)
         self.done = all(map(lambda x: x.done, self.animations))
+
+    def cancel(self):
+        for animation in self.animations:
+            if not animation.done:
+                animation.cancel()
+        self.done = True
 
 
 class SequentialAnimations(Animation):
@@ -76,3 +95,9 @@ class SequentialAnimations(Animation):
                 self.current = next(self.animations)
             except StopIteration:
                 self.done = True
+
+    def cancel(self):
+        self.current.cancel()
+        for animation in self.animations:
+            animation.cancel()
+        self.done = True

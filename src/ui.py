@@ -112,6 +112,7 @@ class UI():
         super().__init__()
         self.app = app
         self.current = UIType.HOME
+        self.game_time = -1
 
         self.draw_methods = {
             UIType.HOME: self.draw_home_ui,
@@ -138,10 +139,14 @@ class UI():
     def draw_game(self, screen: pygame.Surface):
         self.app.game.draw(screen)
         screen.blit(self.app_bar, (0, 0))
-        time = self.app.game.time
-        text = self.appbar_font.render(f"{time//60000:02d}:{time/1000%60:05.2f}", True, constants.WHITE)
-        text.set_alpha(constants.ENABLED_ALPHA)
-        screen.blit(text, ((self.app_bar.get_width()-text.get_width())/2, (self.app_bar.get_height()-text.get_height())/2))
+
+        time = self.app.game.time//1000
+        if time != self.game_time:
+            self.game_time = time
+            self.time_text = self.appbar_font.render(f"{time//60:02d}:{time%60:02d}", True, constants.WHITE)
+            self.time_text.set_alpha(constants.ENABLED_ALPHA)
+
+        screen.blit(self.time_text, ((self.app_bar.get_width()-self.time_text.get_width())/2, (self.app_bar.get_height()-self.time_text.get_height())/2))
         for button in self.game_buttons:
             button.draw(screen)
 

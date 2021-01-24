@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Generator
-from animation import Animation, ConcurrentAnimations, FlipAnimation, SequentialAnimations
 
+from animation import Animation, ConcurrentAnimations, FlipAnimation, SequentialAnimations
 from stack import Stack
 
 

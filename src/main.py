@@ -1,8 +1,9 @@
 import pygame
-from pygame.constants import KMOD_CTRL, K_ESCAPE, K_c, K_d, K_z
+
+import assets
 import constants
 from game import Game
-import assets
+from ui import UI, UIType
 
 
 class App():
@@ -22,23 +23,15 @@ class App():
         self.mousedown = {b: False for b in ("l", "r", "m")}
         self.mousedrag = {b: False for b in ("l", "r", "m")}
 
-        self.KEYMAPPING = {
-            pygame.K_n: lambda e: self.new_game() if e.mod & pygame.KMOD_CTRL else None,
-            pygame.K_d: lambda e: self.game.deal_card(),
-            pygame.K_c: lambda e: self.game.collect_all(),
-            pygame.K_z: lambda e: self.game.undo() if e.mod & pygame.KMOD_CTRL else None,
-            pygame.K_y: lambda e: self.game.redo() if e.mod & pygame.KMOD_CTRL else None,
-            pygame.K_ESCAPE: lambda e: self.game.cancel_animations()
-        }
-
         pygame.display.set_caption("Solitaire")
         pygame.display.set_icon(assets.get_icon())
         self.screen = pygame.display.set_mode((constants.WIDTH, constants.HEIGHT), constants.SCREEN_FLAGS, vsync=True)
         self.clock = pygame.time.Clock()
         assets.load_svgs()
+        self.game = None
+        self.ui = UI(self)
         self.on_resize(pygame.event.Event(pygame.VIDEORESIZE, size=(constants.WIDTH, constants.HEIGHT)))
 
-        self.new_game()
         self.running = True
 
     def mouse_event(self, name):
@@ -53,21 +46,25 @@ class App():
                 btns.append("m")
 
             pos = self.screen_to_game(event.pos)
+            getattr(self.ui, f"on_mouse{name}", lambda e: None)(event)
             for b in btns:
                 getattr(self, f"on_mouse{name}", lambda e, b: None)(event, b)
                 getattr(self, f"on_mouse{name}_{b}", lambda e: None)(event)
-                getattr(self.game, f"on_mouse{name}_{b}", lambda p: None)(pos)
+                getattr(self.ui, f"on_mouse{name}_{b}", lambda e: None)(event)
+                if self.game:
+                    getattr(self.game, f"on_mouse{name}_{b}", lambda p: None)(pos)
         return inner
 
     def on_key(self, event):
-        self.KEYMAPPING.get(event.key, lambda e: None)(event)
+        print(pygame.key.name(event.key))
+        getattr(self, f"on_key_{pygame.key.name(event.key)}".lower(), lambda e: None)(event)
 
     def loop(self):
         while self.running:
             self.clock.tick(200)
             print(f"FPS: {self.clock.get_fps():3.0f}", end="\r")
             self.events()
-            self.draw()
+            self.ui.draw(self.screen)
 
     def events(self):
         for event in pygame.event.get():
@@ -86,11 +83,16 @@ class App():
         else:
             self.scale = height/constants.HEIGHT
 
-        self.origin = ((width - constants.WIDTH*self.scale)*.5, 0)
+        self.origin = ((width/self.scale - constants.WIDTH)*.5, constants.APPBAR_HEIGHT)
 
         assets.render_svgs(self.scale)
+        self.ui.render(event.size, self.scale)
 
-    # MOUSE EVENTS
+    def game_win(self):
+        self.game.paused = True
+        self.ui.current = UIType.WIN
+
+    # region Mouse events
     def on_mousedown(self, event, b):
         self.mousedown[b] = True
 
@@ -113,26 +115,54 @@ class App():
 
     def on_mousedragend(self, event, b):
         self.mousedrag[b] = False
+    # endregion
+
+    # region Keyboard events
+    def on_key_n(self, event):
+        if event.mod & pygame.KMOD_CTRL:
+            self.new_game()
+
+    def on_key_d(self, event):
+        if self.ui.current == UIType.GAME:
+            self.game.deal_card()
+
+    def on_key_c(self, event):
+        if self.ui.current == UIType.GAME:
+            self.game.collect_all()
+
+    def on_key_z(self, event):
+        if self.ui.current == UIType.GAME and event.mod & pygame.KMOD_CTRL:
+            self.game.undo()
+
+    def on_key_y(self, event):
+        if self.ui.current == UIType.GAME and event.mod & pygame.KMOD_CTRL:
+            self.game.redo()
+
+    def on_key_s(self, event):
+        if self.ui.current == UIType.GAME:
+            self.game.cancel_animations()
+
+    def on_key_escape(self, event):
+        if self.ui.current == UIType.GAME:
+            self.game.pause()
+
+    def on_key_space(self, event):
+        if self.ui.current == UIType.GAME:
+            self.game.cancel_animations()
+
+    def on_key_f12(self, event):
+        self.game_win()
+    # endregion
 
     def screen_to_game(self, coords):
-        return ((coords[0] - self.origin[0])/self.scale, (coords[1] - self.origin[1])/self.scale)
+        return (coords[0]/self.scale - self.origin[0], coords[1]/self.scale - self.origin[1])
 
     def game_to_screen(self, coords):
-        return (coords[0]*self.scale + self.origin[0], coords[1]*self.scale + self.origin[1])
-
-    def draw(self):
-        self.draw_background()
-
-        if self.game:
-            self.game.draw(self.screen)
-
-        pygame.display.flip()
-
-    def draw_background(self):
-        self.screen.fill((16, 124, 16))
+        return ((coords[0] + self.origin[0])*self.scale, (coords[1] + self.origin[1])*self.scale)
 
     def new_game(self):
         self.game = Game(self)
+        self.ui.current = UIType.GAME
 
 
 if __name__ == "__main__":

@@ -2,11 +2,11 @@ from abc import ABC, abstractmethod
 from collections import deque
 
 import pygame
-from animation import ConcurrentAnimations, MoveAnimation
 
-from card import Card, Symbol
 import assets
 import constants
+from animation import ConcurrentAnimations, MoveAnimation
+from card import Card, Symbol
 
 
 class Stack(ABC):

@@ -5,7 +5,7 @@ block_cipher = None
 
 a = Analysis(['src\\main.py'],
              binaries=[],
-             datas=[('assets/*.svg', 'assets/')],
+             datas=[('assets/*.svg', 'assets/'),('assets/icons/*.svg', 'assets/icons/'),('assets/*.ttf', 'assets/')],
              hiddenimports=[],
              hookspath=[],
              runtime_hooks=[],

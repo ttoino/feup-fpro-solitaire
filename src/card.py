@@ -1,6 +1,8 @@
-import pygame
-import assets
 from enum import Enum
+
+import pygame
+
+import assets
 
 
 class Suit(Enum):

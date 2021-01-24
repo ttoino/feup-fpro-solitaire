@@ -3,13 +3,16 @@ import sys
 
 import pygame
 from svg import Parser, Rasterizer
+
 import card
 
 card_svgs = None
+icon_svgs = None
 back_svg = None
 empty_svg = None
 
-card_surfaces: list[pygame.Surface] = None
+card_surfaces: dict[str, pygame.Surface] = None
+icon_surfaces: dict[str, pygame.Surface] = None
 back_surface: pygame.Surface = None
 empty_surface: pygame.Surface = None
 
@@ -19,16 +22,17 @@ def get_icon():
 
 
 def load_svgs():
-    global card_svgs, back_svg, empty_svg
+    global card_svgs, icon_svgs, back_svg, empty_svg
     card_svgs = {(suit, symbol): load_svg(f"{suit.value}_{symbol.value}.svg") for suit in card.Suit for symbol in card.Symbol}
+    icon_svgs = {file.removesuffix(".svg"): load_svg(os.path.join("icons", file)) for file in os.listdir(normalize_path("icons")) if file.endswith(".svg")}
     back_svg = load_svg("back.svg")
     empty_svg = load_svg("empty.svg")
 
 
 def render_svgs(scale):
-    global card_surfaces, back_surface, empty_surface
-    card_surfaces = dict(
-        map(lambda t: (t[0], render_svg(t[1], scale)), card_svgs.items()))
+    global card_surfaces, icon_surfaces, back_surface, empty_surface
+    card_surfaces = {k: render_svg(v, scale) for k, v in card_svgs.items()}
+    icon_surfaces = {k: render_svg(v, scale) for k, v in icon_svgs.items()}
     back_surface = render_svg(back_svg, scale)
     empty_surface = render_svg(empty_svg, scale)
 

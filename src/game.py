@@ -1,8 +1,8 @@
 from collections import deque
 from random import shuffle
-from animation import Animation, ConcurrentAnimations, FlipAnimation, MoveAnimation, SequentialAnimations
 
 import constants
+from animation import Animation
 from card import Card, Suit, Symbol
 from history import History
 from move import ConcurrentMoves, FlipMove, Move, MoveMove, SequentialMoves
@@ -19,6 +19,8 @@ class Game():
         shuffle(self.deck)
         self.setup_stacks()
         self.deal()
+        self.paused = False
+        self.time = 0
 
     # region Commands
     def create_deck(self):
@@ -49,14 +51,23 @@ class Game():
         self.animations.add(SequentialMoves(moves).redo())
 
     def undo(self):
+        if self.paused:
+            return
+
         self.cancel_animations()
         self.history.undo()
 
     def redo(self):
+        if self.paused:
+            return
+
         self.cancel_animations()
         self.history.redo()
 
     def deal_card(self):
+        if self.paused:
+            return
+
         self.cancel_animations()
         if self.stock.is_empty:
             self.history.add_move(ConcurrentMoves(tuple(FlipMove(c) for c in self.waste.cards) + (MoveMove(self.waste, self.stock, self.waste.size, True),)))
@@ -70,6 +81,9 @@ class Game():
         return move
 
     def collect_card(self, stack: Stack):
+        if stack.is_empty:
+            return
+
         for f in self.foundations:
             if f.can_enter(stack.card_on_top, 1):
                 self.cancel_animations()
@@ -77,6 +91,10 @@ class Game():
                 return
 
     def collect_all(self):
+        if self.paused:
+            return
+
+        self.cancel_animations()
         moves = []
         b = True
         while b:
@@ -90,35 +108,54 @@ class Game():
                         b = True
                         continue
         if moves:
-            self.cancel_animations()
             m = SequentialMoves(moves)
             list(m.undo().animations)
             self.history.add_move(m)
 
     def cancel_animations(self):
+        if self.paused:
+            return
+
         for animation in self.animations:
             animation.cancel()
+
+    def pause(self):
+        self.paused = not self.paused
     # endregion
 
     def draw(self, screen):
-        for animation in set(self.animations):
-            animation.tick(self.app.clock.get_time())
-            if animation.done:
-                self.animations.remove(animation)
+        if not self.paused:
+            for animation in set(self.animations):
+                animation.tick(self.app.clock.get_time())
+                if animation.done:
+                    self.animations.remove(animation)
+
+            if not self.animations and all(f.size == 13 for f in self.foundations):
+                print("WIN")
+                self.app.game_win()
+            else:
+                self.time += self.app.clock.get_time()
 
         for stack in self.stacks:
             stack.draw(screen)
 
+    # region Mouse
     def clicked_stack(self, pos):
         for s in self.clickable_stacks:
             if s.rect.collidepoint(pos):
                 return s
 
     def on_mouseclick_l(self, pos):
+        if self.paused:
+            return
+
         if self.clicked_stack(pos) == self.stock:
             self.deal_card()
 
     def on_mouseclick_m(self, pos):
+        if self.paused:
+            return
+
         s = self.clicked_stack(pos)
         if s and s.get_cards_to_drag(pos) == 1:
             self.collect_card(s)
@@ -126,9 +163,15 @@ class Game():
             self.collect_all()
 
     def on_mousedrag_l(self, pos):
+        if self.paused:
+            return
+
         self.drag.mouse_pos = pos
 
     def on_mousedragbegin_l(self, pos):
+        if self.paused:
+            return
+
         for s in self.stacks:
             c = s.get_cards_to_drag(pos)
             if c:
@@ -138,6 +181,9 @@ class Game():
                 self.drag.offset = (pos[0] - self.drag.cards[0].pos[0], pos[1] - self.drag.cards[0].pos[1])
 
     def on_mousedragend_l(self, pos):
+        if self.paused:
+            return
+
         if self.drag.is_empty:
             return
 
@@ -151,3 +197,4 @@ class Game():
 
         self.drag.cards.clear()
         self.animations.add(self.drag.source_stack.animate())
+    # endregion

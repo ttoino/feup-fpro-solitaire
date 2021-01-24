@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 import pygame
 
 import constants
-
 from card import Card
 
 

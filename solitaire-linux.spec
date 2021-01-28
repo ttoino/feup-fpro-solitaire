@@ -3,9 +3,10 @@
 block_cipher = None
 
 
-a = Analysis(['src\\main.py'],
+a = Analysis(['src/main.py'],
+             pathex=['/usr/local/lib/python3.8/dist-packages/pynanosvg-0.3.1-py3.8-linux-x86_64.egg'],
              binaries=[],
-             datas=[('assets/*.svg', 'assets/'),('assets/icons/*.svg', 'assets/icons/'),('assets/*.ttf', 'assets/')],
+             datas=[('assets/*.svg', 'assets/'), ('assets/icons/*.svg', 'assets/icons/'), ('assets/*.ttf', 'assets/')],
              hiddenimports=[],
              hookspath=[],
              runtime_hooks=[],
@@ -22,11 +23,11 @@ exe = EXE(pyz,
           a.zipfiles,
           a.datas,
           [],
-          name='Solitaire-Win',
+          name='Solitaire-Linux',
           debug=False,
           bootloader_ignore_signals=False,
           strip=False,
           upx=True,
           upx_exclude=[],
           runtime_tmpdir=None,
-          console=False , icon='assets\\icon.ico')
+          console=False )
